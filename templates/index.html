@@ -1,0 +1,171 @@
+<!-- /templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luna AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mini.css/3.0.1/mini-default.min.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        .container {
+            width: 500px;  /* Increased width */
+            height: 700px; /* Increased height */
+            background-color: white;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            background-color: #3366ff;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .chat-body {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        .chat-message {
+            display: flex;
+            align-items: flex-end;
+            margin-bottom: 10px;
+        }
+        .chat-message.user {
+            flex-direction: row-reverse;
+        }
+        .chat-message.ai {
+            flex-direction: row;
+        }
+        .chat-message .message-box {
+            max-width: 75%;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .chat-message.user .message-box {
+            background-color: #228B22;
+            color: white;
+        }
+        .chat-message.ai .message-box {
+            background-color: #3366ff;
+            color: white;
+        }
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid lightgray;
+        }
+        .chat-input textarea {
+            width: 100%;
+            resize: none;
+            border: none;
+            padding: 5px;
+        }
+        .chat-input button {
+            margin-left: 10px;
+            padding: 5px 10px;
+            background-color: #3366ff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+      
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="chat-header">Luna</div>
+        <div class="chat-body">
+            <!-- User messages will appear here -->
+        </div>
+        <div class="chat-input">
+            <textarea id="chat-input" placeholder="Type your message"></textarea>
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+   <script>
+        let messages = [];
+
+        function sendMessage() {
+            const input = document.getElementById("chat-input");
+            const message = input.value;
+            console.log("Sending message:", message);
+
+            // Add the user message to the chat body
+            const userMessage = document.createElement("div");
+            userMessage.classList.add("chat-message", "user");
+            const userMessageBox = document.createElement("div");
+            userMessageBox.classList.add("message-box");
+            userMessageBox.textContent = message;
+            userMessage.appendChild(userMessageBox);
+            document.querySelector(".chat-body").appendChild(userMessage);
+            input.value = "";
+
+            // Display "Luna is typing..."
+            const typingMessage = document.createElement("div");
+            typingMessage.classList.add("chat-message", "ai");
+            const typingMessageBox = document.createElement("div");
+            typingMessageBox.classList.add("message-box");
+            typingMessageBox.textContent = "Luna is typing...";
+            typingMessage.appendChild(typingMessageBox);
+            document.querySelector(".chat-body").appendChild(typingMessage);
+
+            // Send the message to the server and get the AI response
+            sendMessageToServer(message).then(aiResponse => {
+                console.log("Received response:", aiResponse);
+                // Remove "Luna is typing..." message
+                document.querySelector(".chat-body").removeChild(typingMessage);
+
+                // Add the AI response to the chat body
+                const aiResponseElement = document.createElement("div");
+                aiResponseElement.classList.add("chat-message", "ai");
+                const aiResponseMessageBox = document.createElement("div");
+                aiResponseMessageBox.classList.add("message-box");
+                aiResponseMessageBox.textContent = aiResponse;
+                aiResponseElement.appendChild(aiResponseMessageBox);
+                document.querySelector(".chat-body").appendChild(aiResponseElement);
+            }).catch(error => {
+                console.error("Error:", error);
+                document.querySelector(".chat-body").removeChild(typingMessage);
+                alert("An error occurred while getting the response.");
+            });
+        }
+
+        function sendMessageToServer(message) {
+            messages.push({"role": "user", "content": message});
+            console.log("Sending to server:", JSON.stringify({ message: message, messages: messages }));
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "/generate", true);
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            const data = JSON.parse(xhr.responseText);
+                            messages.push({"role": "assistant", "content": data.answer});
+                            resolve(data.answer);
+                        } else {
+                            reject(new Error("Failed to retrieve AI response"));
+                        }
+                    }
+                };
+                xhr.send(JSON.stringify({ message: message, messages: messages }));
+            });
+}
+    </script>
+</body>
+</html>
+
